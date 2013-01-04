@@ -1,5 +1,5 @@
 //
-//  ViewController.h
+//  UITopPlacesTableViewController.h
 //  Flickr Top Places
 //
 //  Created by Austin on 1/2/13.
@@ -8,6 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
+@interface UITopPlacesTableViewController : UITableViewController
 
 @end
