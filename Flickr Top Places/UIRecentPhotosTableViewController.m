@@ -7,9 +7,19 @@
 //
 
 #import "UIRecentPhotosTableViewController.h"
-
+#import "FlickrFetcher.h"
+#import "UIFlickrPhotoViewController.h"
 
 @implementation UIRecentPhotosTableViewController
+
+@synthesize recentPhotos = _recentPhotos;
+
+- (void) setRecentPhotos:(NSArray*) photos {
+    if (photos != _recentPhotos) {
+        _recentPhotos = photos;
+        [self.tableView reloadData];
+    }
+}
 
 - (id)initWithStyle:(UITableViewStyle)style
 {
@@ -51,6 +61,11 @@
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    
+    self.recentPhotos = [[[defaults objectForKey:@"flickr.topplaces.history"] reverseObjectEnumerator] allObjects];
+    
+    [self.tableView reloadData];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -71,28 +86,20 @@
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
     // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
+    return YES;
 }
 
 #pragma mark - Table view data source
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
-{
-#warning Potentially incomplete method implementation.
-    // Return the number of sections.
-    return 0;
-}
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-#warning Incomplete method implementation.
-    // Return the number of rows in the section.
-    return 0;
+    return [self.recentPhotos count];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    static NSString *CellIdentifier = @"Cell";
+    static NSString *CellIdentifier = @"Recent Photo View";
     
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
     if (cell == nil) {
@@ -100,60 +107,39 @@
     }
     
     // Configure the cell...
+    NSDictionary *place = [self.recentPhotos objectAtIndex:indexPath.row];
+    NSString *photoTitle = [place objectForKey:FLICKR_PHOTO_TITLE];
+    NSString *photoDescription = [place objectForKey:FLICKR_PHOTO_DESCRIPTION];
+    
+    if (photoTitle && ![photoTitle isEqualToString:@""]) {
+        cell.textLabel.text = photoTitle;
+        cell.detailTextLabel.text = photoDescription;
+    } else if (photoDescription && ![photoDescription isEqualToString:@""]) {
+        cell.textLabel.text = photoDescription;
+        cell.detailTextLabel.text = @"";
+    } else {
+        cell.textLabel.text = @"Uknown";
+        cell.detailTextLabel.text = @"";        
+    }
+    
+
     
     return cell;
 }
 
-/*
-// Override to support conditional editing of the table view.
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the specified item to be editable.
-    return YES;
+- (void) prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    NSDictionary *photoDictionary = [self.recentPhotos objectAtIndex:self.tableView.indexPathForSelectedRow.row];
+    
+    [[segue destinationViewController] setFlickrPhoto:photoDictionary];
 }
-*/
 
-/*
-// Override to support editing the table view.
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (editingStyle == UITableViewCellEditingStyleDelete) {
-        // Delete the row from the data source
-        [tableView deleteRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    }   
-    else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-    }   
+- (void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    UIFlickrPhotoViewController* flickrPhotoViewController = [[self.splitViewController viewControllers] lastObject];
+    
+    if (flickrPhotoViewController) {
+        [flickrPhotoViewController redrawPhoto:[self.recentPhotos objectAtIndex:indexPath.row]];
+    }
 }
-*/
 
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath
-{
-}
-*/
-
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
-
-#pragma mark - Table view delegate
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Navigation logic may go here. Create and push another view controller.
-    /*
-     <#DetailViewController#> *detailViewController = [[<#DetailViewController#> alloc] initWithNibName:@"<#Nib name#>" bundle:nil];
-     // ...
-     // Pass the selected object to the new view controller.
-     [self.navigationController pushViewController:detailViewController animated:YES];
-     */
-}
 
 @end

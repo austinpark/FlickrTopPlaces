@@ -7,9 +7,36 @@
 //
 
 #import "UITopPlacesTableViewController.h"
+#import "FlickrFetcher.h"
+#import "UIPlaceTableViewController.h"
 
 
 @implementation UITopPlacesTableViewController
+@synthesize places = _places;
+
+- (void) setPlaces:(NSArray *)places {
+    if (places != _places) {
+        _places = places;
+        [self.tableView reloadData];
+    }
+}
+- (IBAction)refresh:(id)sender {
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    [spinner startAnimating];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:spinner];
+    
+    dispatch_queue_t downloadQueue = dispatch_queue_create("flickr downloader", NULL);
+    dispatch_async(downloadQueue, ^{
+        NSArray *sortedPhotos = [NSArray arrayWithObject:[NSSortDescriptor sortDescriptorWithKey:FLICKR_PLACE_NAME ascending:YES]];
+        
+        NSArray *places = [[FlickrFetcher topPlaces] sortedArrayUsingDescriptors:sortedPhotos];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.navigationItem.rightBarButtonItem = sender;
+            self.places = places;
+        });
+    });
+    dispatch_release(downloadQueue);
+}
 
 - (id)initWithStyle:(UITableViewStyle)style
 {
@@ -33,9 +60,29 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    [spinner startAnimating];
+    
+    id currentBarButtonItem = self.navigationItem.rightBarButtonItem;
+    
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:spinner];
+    
+    dispatch_queue_t downloadQueue = dispatch_queue_create("flickr downloader", NULL);
+    dispatch_async(downloadQueue, ^{
+        NSArray *sortedPhotos = [NSArray arrayWithObject:[NSSortDescriptor sortDescriptorWithKey:FLICKR_PLACE_NAME ascending:YES]];
+        
+        NSArray *places = [[FlickrFetcher topPlaces] sortedArrayUsingDescriptors:sortedPhotos];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.navigationItem.rightBarButtonItem = currentBarButtonItem;
+            self.places = places;
+        });
+    });
+    dispatch_release(downloadQueue);
+
 
     // Uncomment the following line to preserve selection between presentations.
-    // self.clearsSelectionOnViewWillAppear = NO;
+    self.clearsSelectionOnViewWillAppear = NO;
  
     // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
     // self.navigationItem.rightBarButtonItem = self.editButtonItem;
@@ -71,28 +118,19 @@
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
     // Return YES for supported orientations
-    return (interfaceOrientation == UIInterfaceOrientationPortrait);
+    return YES;
 }
 
 #pragma mark - Table view data source
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
-{
-#warning Potentially incomplete method implementation.
-    // Return the number of sections.
-    return 0;
-}
-
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-#warning Incomplete method implementation.
-    // Return the number of rows in the section.
-    return 0;
+    return [self.places count];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    static NSString *CellIdentifier = @"Cell";
+    static NSString *CellIdentifier = @"Flickr Photo";
     
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
     if (cell == nil) {
@@ -100,60 +138,41 @@
     }
     
     // Configure the cell...
+    NSDictionary *place = [self.places objectAtIndex:indexPath.row];
+    NSString *placeName = [place objectForKey:FLICKR_PLACE_NAME];
+    NSRange cityIndex = [placeName rangeOfString:@","];
     
+    if (cityIndex.location == NSNotFound) {
+        cell.textLabel.text = placeName;
+        cell.detailTextLabel.text = @"";
+    } else {
+        cell.textLabel.text = [placeName substringToIndex:cityIndex.location];
+        cell.detailTextLabel.text = [placeName substringFromIndex:cityIndex.location + 1];
+    }
     return cell;
 }
 
-/*
-// Override to support conditional editing of the table view.
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the specified item to be editable.
-    return YES;
-}
-*/
 
-/*
-// Override to support editing the table view.
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (editingStyle == UITableViewCellEditingStyleDelete) {
-        // Delete the row from the data source
-        [tableView deleteRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    }   
-    else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-    }   
-}
-*/
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    NSDictionary *placeDictionary = [self.places objectAtIndex:self.tableView.indexPathForSelectedRow.row];
 
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath
-{
-}
-*/
+    UIPlaceTableViewController* placePhotosController = [segue destinationViewController];
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    [spinner startAnimating];
+    
+    id currentButtonItem = placePhotosController.navigationItem.leftBarButtonItem;
 
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
-
-#pragma mark - Table view delegate
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Navigation logic may go here. Create and push another view controller.
-    /*
-     <#DetailViewController#> *detailViewController = [[<#DetailViewController#> alloc] initWithNibName:@"<#Nib name#>" bundle:nil];
-     // ...
-     // Pass the selected object to the new view controller.
-     [self.navigationController pushViewController:detailViewController animated:YES];
-     */
+    placePhotosController.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:spinner];
+    
+    dispatch_queue_t photoListDownloadQueue = dispatch_queue_create("photoListDownload Queue", NULL);
+    
+        
+    dispatch_async(photoListDownloadQueue, ^{
+        NSArray* photoList = [FlickrFetcher photosInPlace:placeDictionary maxResults:50];
+        [placePhotosController setPhotoList:photoList withTitle:[sender textLabel].text];
+        placePhotosController.navigationItem.leftBarButtonItem = currentButtonItem;
+    });
+    
 }
 
 @end

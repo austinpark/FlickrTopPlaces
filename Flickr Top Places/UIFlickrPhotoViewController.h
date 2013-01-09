@@ -10,4 +10,6 @@
 
 @interface UIFlickrPhotoViewController : UIViewController
 
+- (void) setFlickrPhoto:(NSDictionary*) flickrPhoto;
+- (void) redrawPhoto:(NSDictionary*) newPhoto;
 @end

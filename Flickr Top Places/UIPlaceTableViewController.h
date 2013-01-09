@@ -9,5 +9,7 @@
 #import <UIKit/UIKit.h>
 
 @interface UIPlaceTableViewController : UITableViewController
+@property (nonatomic, strong) NSArray* photoList;
 
+- (void) setPhotoList:(NSArray*) photoList withTitle:(NSString*) title;
 @end

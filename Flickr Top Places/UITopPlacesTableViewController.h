@@ -9,5 +9,6 @@
 #import <UIKit/UIKit.h>
 
 @interface UITopPlacesTableViewController : UITableViewController
+@property (nonatomic, strong) NSArray* places;
 
 @end
